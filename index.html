@@ -53,11 +53,13 @@
     };
 
     const ALL_SUB_SUBJECTS = [
+      '国語', '数学', '英語',
       ...DETAIL_SUBJECTS['国語'], ...DETAIL_SUBJECTS['数学'], ...DETAIL_SUBJECTS['英語'],
       ...DETAIL_SUBJECTS['理科'], ...DETAIL_SUBJECTS['社会']
     ];
 
     const getSubjectColor = (subName) => {
+      if (SUBJECT_COLORS[subName]) return SUBJECT_COLORS[subName];
       for (const mainSub in DETAIL_SUBJECTS) {
         if (DETAIL_SUBJECTS[mainSub].includes(subName)) return SUBJECT_COLORS[mainSub];
       }
@@ -232,9 +234,9 @@
       const [newTitle, setNewTitle] = useState('');
       const [newDate, setNewDate] = useState(getLocalDateString(new Date()));
       const [newScores, setNewScores] = useState({});
-      // 理科・社会の選択状態を管理
+      // 全科目の選択状態を管理
       const [selectedOptions, setSelectedOptions] = useState({
-        rika1: '', rika2: '', syakai1: '', syakai2: ''
+        kokugo1: '', kokugo2: '', sugaku1: '', sugaku2: '', eigo1: '', eigo2: '', rika1: '', rika2: '', syakai1: '', syakai2: ''
       });
 
       const handleScoreChange = (sub, value) => {
@@ -250,14 +252,7 @@
         if (!newTitle) return;
         const scores = {};
         
-        // 固定科目のスコア取得
-        const fixedSubjects = [...DETAIL_SUBJECTS['国語'], ...DETAIL_SUBJECTS['数学'], ...DETAIL_SUBJECTS['英語']];
-        fixedSubjects.forEach(sub => {
-          const s = parseInt(newScores[sub]);
-          if (!isNaN(s) && s >= 0 && s <= 100) scores[sub] = s;
-        });
-
-        // 選択科目（理科・社会）のスコア取得
+        // 選択科目のスコア取得
         Object.values(selectedOptions).forEach(sub => {
           if (sub) {
             const s = parseInt(newScores[sub]);
@@ -277,7 +272,7 @@
         setGrades(updatedGrades);
         setNewTitle('');
         setNewScores({});
-        setSelectedOptions({ rika1: '', rika2: '', syakai1: '', syakai2: '' });
+        setSelectedOptions({ kokugo1: '', kokugo2: '', sugaku1: '', sugaku2: '', eigo1: '', eigo2: '', rika1: '', rika2: '', syakai1: '', syakai2: '' });
       };
 
       const handleDelete = (id) => {
@@ -395,27 +390,23 @@
               </div>
               
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-2">各教科の得点 (0〜100)</label>
-                
-                {/* 国語・数学・英語（固定表示） */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-                  {['国語', '数学', '英語'].map(mainSub => (
-                    DETAIL_SUBJECTS[mainSub].map(sub => (
-                      <div key={sub} className="flex items-center bg-slate-50 border-2 border-slate-100 rounded-xl px-2 focus-within:border-indigo-400 transition-colors">
-                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mr-1.5" style={{backgroundColor: SUBJECT_COLORS[mainSub]}}></span>
-                        <span className="text-[10px] md:text-[11px] font-bold text-slate-600 truncate flex-1" title={sub}>{sub}</span>
-                        <input type="number" min="0" max="100" placeholder="-" value={newScores[sub] || ''} onChange={e=>handleScoreChange(sub, e.target.value)} className="w-10 p-2 bg-transparent font-bold outline-none text-right" />
-                      </div>
-                    ))
-                  ))}
-                </div>
-
-                {/* 理科・社会（プルダウン選択形式） */}
-                <label className="block text-xs font-bold text-slate-500 mb-2 mt-4">理科・社会（選択科目）</label>
+                <label className="block text-xs font-bold text-slate-500 mb-2 mt-4">各教科（選択科目）</label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {['rika1', 'rika2', 'syakai1', 'syakai2'].map((key) => {
-                    const mainSub = key.startsWith('rika') ? '理科' : '社会';
+                  {['kokugo1', 'kokugo2', 'sugaku1', 'sugaku2', 'eigo1', 'eigo2', 'rika1', 'rika2', 'syakai1', 'syakai2'].map((key) => {
+                    let mainSub;
+                    if (key.startsWith('kokugo')) mainSub = '国語';
+                    else if (key.startsWith('sugaku')) mainSub = '数学';
+                    else if (key.startsWith('eigo')) mainSub = '英語';
+                    else if (key.startsWith('rika')) mainSub = '理科';
+                    else mainSub = '社会';
+
                     const selectedSub = selectedOptions[key];
+                    
+                    let options = DETAIL_SUBJECTS[mainSub];
+                    if (activeTab === 'mock' && ['国語', '数学', '英語'].includes(mainSub)) {
+                      options = [mainSub];
+                    }
+
                     return (
                       <div key={key} className="flex items-center bg-slate-50 border-2 border-slate-100 rounded-xl px-2 focus-within:border-indigo-400 transition-colors">
                         <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mr-1.5" style={{backgroundColor: SUBJECT_COLORS[mainSub]}}></span>
@@ -425,7 +416,7 @@
                           className="text-[11px] font-bold text-slate-600 bg-transparent outline-none flex-1 truncate py-2"
                         >
                           <option value="">{mainSub}を選択...</option>
-                          {DETAIL_SUBJECTS[mainSub].map(s => <option key={s} value={s}>{s}</option>)}
+                          {options.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                         <input type="number" min="0" max="100" placeholder="-" value={selectedSub ? (newScores[selectedSub] || '') : ''} onChange={e=> selectedSub && handleScoreChange(selectedSub, e.target.value)} className="w-12 p-2 bg-transparent font-bold outline-none text-right" disabled={!selectedSub} />
                       </div>
@@ -1473,4 +1464,3 @@
     root.render(<App />);
   </script>
 </body>
-</html>
