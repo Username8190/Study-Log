@@ -43,17 +43,26 @@
     };
     const SUBJECTS = Object.keys(SUBJECT_COLORS);
 
-    // --- 成績管理用の細分化された科目設定 ---
-    const GRADE_SUBJECT_COLORS = {
-      '英語': '#a855f7',
-      '現代文': '#ec4899', '古文': '#f472b6', '漢文': '#be185d',
-      '数学I': '#93c5fd', '数学II': '#60a5fa', '数学III': '#3b82f6', '数学A': '#2563eb', '数学B': '#1d4ed8', '数学C': '#1e3a8a',
-      '物理基礎': '#bbf7d0', '物理': '#86efac', '化学基礎': '#4ade80', '化学': '#22c55e', '生物基礎': '#16a34a', '生物': '#15803d', '地学基礎': '#059669', '地学': '#047857',
-      '歴史総合': '#fef08a', '日本史': '#fdba74', '世界史': '#fb923c', '地理総合': '#fde047', '地理': '#f97316', '公共': '#ea580c', '倫理': '#c2410c', '政経': '#9a3412',
-      '情報': '#2dd4bf',
-      'その他': '#9ca3af',
+    // 追加：成績管理用の細分化科目
+    const DETAIL_SUBJECTS = {
+      '国語': ['現代の国語', '言語文化', '論理国語', '文学国語', '古典探究'],
+      '社会': ['地理総合', '地理探究', '歴史総合', '日本史探究', '世界史探究', '公共', '倫理', '政治・経済'],
+      '数学': ['数学Ⅰ', '数学Ⅱ', '数学Ⅲ', '数学A', '数学B', '数学C', '数学総合'],
+      '理科': ['物理基礎', '物理', '化学基礎', '化学', '生物基礎', '生物'],
+      '英語': ['英語コミュニケーション', '論理・表現']
     };
-    const GRADE_SUBJECTS = Object.keys(GRADE_SUBJECT_COLORS);
+
+    const ALL_SUB_SUBJECTS = [
+      ...DETAIL_SUBJECTS['国語'], ...DETAIL_SUBJECTS['数学'], ...DETAIL_SUBJECTS['英語'],
+      ...DETAIL_SUBJECTS['理科'], ...DETAIL_SUBJECTS['社会']
+    ];
+
+    const getSubjectColor = (subName) => {
+      for (const mainSub in DETAIL_SUBJECTS) {
+        if (DETAIL_SUBJECTS[mainSub].includes(subName)) return SUBJECT_COLORS[mainSub];
+      }
+      return SUBJECT_COLORS['その他'];
+    };
 
     const EVENT_COLORS = [
       { id: 'red', color: '#ef4444', label: '赤' },
@@ -223,18 +232,37 @@
       const [newTitle, setNewTitle] = useState('');
       const [newDate, setNewDate] = useState(getLocalDateString(new Date()));
       const [newScores, setNewScores] = useState({});
+      // 理科・社会の選択状態を管理
+      const [selectedOptions, setSelectedOptions] = useState({
+        rika1: '', rika2: '', syakai1: '', syakai2: ''
+      });
 
       const handleScoreChange = (sub, value) => {
         setNewScores(prev => ({ ...prev, [sub]: value }));
+      };
+
+      const handleOptionChange = (key, value) => {
+        setSelectedOptions(prev => ({ ...prev, [key]: value }));
       };
 
       const handleAdd = (e) => {
         e.preventDefault();
         if (!newTitle) return;
         const scores = {};
-        GRADE_SUBJECTS.forEach(sub => {
+        
+        // 固定科目のスコア取得
+        const fixedSubjects = [...DETAIL_SUBJECTS['国語'], ...DETAIL_SUBJECTS['数学'], ...DETAIL_SUBJECTS['英語']];
+        fixedSubjects.forEach(sub => {
           const s = parseInt(newScores[sub]);
           if (!isNaN(s) && s >= 0 && s <= 100) scores[sub] = s;
+        });
+
+        // 選択科目（理科・社会）のスコア取得
+        Object.values(selectedOptions).forEach(sub => {
+          if (sub) {
+            const s = parseInt(newScores[sub]);
+            if (!isNaN(s) && s >= 0 && s <= 100) scores[sub] = s;
+          }
         });
         
         const newGrade = {
@@ -249,6 +277,7 @@
         setGrades(updatedGrades);
         setNewTitle('');
         setNewScores({});
+        setSelectedOptions({ rika1: '', rika2: '', syakai1: '', syakai2: '' });
       };
 
       const handleDelete = (id) => {
@@ -268,11 +297,11 @@
       const graphHeight = svgHeight - paddingY * 2;
 
       const points = {};
-      GRADE_SUBJECTS.forEach(sub => points[sub] = []);
+      ALL_SUB_SUBJECTS.forEach(sub => points[sub] = []);
 
       currentGrades.forEach((g, i) => {
         const x = currentGrades.length === 1 ? svgWidth / 2 : paddingX + (i / (currentGrades.length - 1)) * graphWidth;
-        GRADE_SUBJECTS.forEach(sub => {
+        ALL_SUB_SUBJECTS.forEach(sub => {
           if (g.scores[sub] !== undefined) {
             const y = paddingY + graphHeight - (g.scores[sub] / 100) * graphHeight;
             points[sub].push({x, y, score: g.scores[sub], title: g.title});
@@ -305,14 +334,15 @@
                   ))}
                   
                   {/* 各教科の折れ線と点 */}
-                  {GRADE_SUBJECTS.map(sub => {
+                  {ALL_SUB_SUBJECTS.map(sub => {
                     if (points[sub].length === 0) return null;
                     const pathD = `M ${points[sub].map(p => `${p.x},${p.y}`).join(' L ')}`;
+                    const color = getSubjectColor(sub);
                     return (
                       <g key={sub}>
-                        <path d={pathD} fill="none" stroke={GRADE_SUBJECT_COLORS[sub]} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="opacity-80 hover:opacity-100 transition-opacity" />
+                        <path d={pathD} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="opacity-80 hover:opacity-100 transition-opacity" />
                         {points[sub].map((p, i) => (
-                          <circle key={i} cx={p.x} cy={p.y} r="5" fill={GRADE_SUBJECT_COLORS[sub]} stroke="#fff" strokeWidth="2" className="cursor-pointer">
+                          <circle key={i} cx={p.x} cy={p.y} r="5" fill={color} stroke="#fff" strokeWidth="2" className="cursor-pointer">
                             <title>{p.title}&#10;{sub}: {p.score}点</title>
                           </circle>
                         ))}
@@ -339,9 +369,9 @@
 
             {/* 凡例 */}
             <div className="flex flex-wrap gap-4 mt-6 justify-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              {GRADE_SUBJECTS.map(sub => (
+              {SUBJECTS.map(sub => (
                 <div key={sub} className="flex items-center gap-1.5">
-                  <span className="w-3.5 h-3.5 rounded-full shadow-sm" style={{backgroundColor: GRADE_SUBJECT_COLORS[sub]}}></span>
+                  <span className="w-3.5 h-3.5 rounded-full shadow-sm" style={{backgroundColor: SUBJECT_COLORS[sub]}}></span>
                   <span className="text-xs font-bold text-slate-700">{sub}</span>
                 </div>
               ))}
@@ -366,14 +396,41 @@
               
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-2">各教科の得点 (0〜100)</label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {GRADE_SUBJECTS.map(sub => (
-                    <div key={sub} className="flex items-center bg-slate-50 border-2 border-slate-100 rounded-xl px-3 focus-within:border-indigo-400 transition-colors">
-                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mr-2" style={{backgroundColor: GRADE_SUBJECT_COLORS[sub]}}></span>
-                      <span className="text-sm font-bold text-slate-600 w-16 whitespace-nowrap">{sub}</span>
-                      <input type="number" min="0" max="100" placeholder="-" value={newScores[sub] || ''} onChange={e=>handleScoreChange(sub, e.target.value)} className="w-full p-2 bg-transparent font-bold outline-none text-right" />
-                    </div>
+                
+                {/* 国語・数学・英語（固定表示） */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                  {['国語', '数学', '英語'].map(mainSub => (
+                    DETAIL_SUBJECTS[mainSub].map(sub => (
+                      <div key={sub} className="flex items-center bg-slate-50 border-2 border-slate-100 rounded-xl px-2 focus-within:border-indigo-400 transition-colors">
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mr-1.5" style={{backgroundColor: SUBJECT_COLORS[mainSub]}}></span>
+                        <span className="text-[10px] md:text-[11px] font-bold text-slate-600 truncate flex-1" title={sub}>{sub}</span>
+                        <input type="number" min="0" max="100" placeholder="-" value={newScores[sub] || ''} onChange={e=>handleScoreChange(sub, e.target.value)} className="w-10 p-2 bg-transparent font-bold outline-none text-right" />
+                      </div>
+                    ))
                   ))}
+                </div>
+
+                {/* 理科・社会（プルダウン選択形式） */}
+                <label className="block text-xs font-bold text-slate-500 mb-2 mt-4">理科・社会（選択科目）</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {['rika1', 'rika2', 'syakai1', 'syakai2'].map((key) => {
+                    const mainSub = key.startsWith('rika') ? '理科' : '社会';
+                    const selectedSub = selectedOptions[key];
+                    return (
+                      <div key={key} className="flex items-center bg-slate-50 border-2 border-slate-100 rounded-xl px-2 focus-within:border-indigo-400 transition-colors">
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mr-1.5" style={{backgroundColor: SUBJECT_COLORS[mainSub]}}></span>
+                        <select 
+                          value={selectedSub} 
+                          onChange={e => handleOptionChange(key, e.target.value)}
+                          className="text-[11px] font-bold text-slate-600 bg-transparent outline-none flex-1 truncate py-2"
+                        >
+                          <option value="">{mainSub}を選択...</option>
+                          {DETAIL_SUBJECTS[mainSub].map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <input type="number" min="0" max="100" placeholder="-" value={selectedSub ? (newScores[selectedSub] || '') : ''} onChange={e=> selectedSub && handleScoreChange(selectedSub, e.target.value)} className="w-12 p-2 bg-transparent font-bold outline-none text-right" disabled={!selectedSub} />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               
@@ -395,10 +452,10 @@
                       <div className="font-bold text-slate-700">{g.title}</div>
                     </div>
                     <div className="flex flex-wrap gap-2 md:gap-4 items-center flex-1 md:justify-end">
-                      {GRADE_SUBJECTS.map(sub => g.scores[sub] !== undefined && (
+                      {ALL_SUB_SUBJECTS.map(sub => g.scores[sub] !== undefined && (
                         <div key={sub} className="flex items-center gap-1 bg-white px-2 py-1 rounded shadow-sm">
-                          <span className="w-2 h-2 rounded-full" style={{backgroundColor: GRADE_SUBJECT_COLORS[sub]}}></span>
-                          <span className="text-xs font-bold text-slate-600">{sub}: {g.scores[sub]}</span>
+                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{backgroundColor: getSubjectColor(sub)}}></span>
+                          <span className="text-[10px] md:text-xs font-bold text-slate-600 truncate max-w-[100px]" title={sub}>{sub}: {g.scores[sub]}</span>
                         </div>
                       ))}
                       <button onClick={()=>handleDelete(g.id)} className="p-2 text-red-400 hover:text-red-600 bg-white rounded-lg shadow-sm transition-colors ml-auto md:ml-2">
@@ -572,7 +629,7 @@
               {/* ②「平均時間」の文字を大きくする修正箇所 */}
               <p className="font-bold text-slate-500 mt-1 flex items-baseline gap-1">
                 平均: <span className="text-2xl md:text-3xl text-indigo-600 ml-1">{formatTimeStr(averageSec)}</span> 
-                <span className="text-xs ml-1">/ {view === 'daily' ? '日' : view === 'weekly' ? '月' : '月'}</span>
+                <span className="text-xs ml-1">/ {view === 'daily' ? '日' : view === 'weekly' ? '週' : '月'}</span>
               </p>
             </div>
             <div className="flex bg-slate-100 rounded-lg p-1 self-end sm:self-auto">
@@ -1417,3 +1474,4 @@
   </script>
 </body>
 </html>
+
