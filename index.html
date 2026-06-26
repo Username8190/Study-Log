@@ -33,7 +33,7 @@
 <body class="text-slate-800">
   <div id="root"></div>
 
-  <script type="text/babel">
+  <script type="text/babel" data-presets="react,env">
     const { useState, useEffect, useRef, useMemo } = React;
 
     // --- 定数設定 ---
@@ -870,7 +870,7 @@
         if (totalSec <= 0) return alert('学習時間を入力してください');
         
         addRecord(manualMaterialId, totalSec, manualDate);
-        alert('手持で記録を追加しました！');
+        alert('手動で記録を追加しました！');
         setManualHours(''); setManualMinutes('');
       };
 
